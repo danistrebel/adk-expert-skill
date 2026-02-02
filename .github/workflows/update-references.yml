@@ -1,0 +1,40 @@
+name: Update ADK Expert References
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs every 24 hours (daily at midnight UTC)
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  update-references:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x skills/adk-expert/scripts/update-references.sh
+
+      - name: Run update script
+        run: ./skills/adk-expert/scripts/update-references.sh
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status --porcelain skills/adk-expert/references/) ]]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes_detected == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add skills/adk-expert/references/
+          git commit -m "chore: update ADK expert references [skip ci]"
+          git push
